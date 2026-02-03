@@ -1,29 +1,19 @@
-# ---------------- Funciones auxiliares ----------------
-
-get_protein_ids <- function(df) {
-  if ("Majority.protein.IDs" %in% colnames(df)) {
-    return(df$Majority.protein.IDs)
-  } else {
-    return(rownames(df))
-  }
-}
-
-# -------------- Función principal ------------------
-
 run_geyer_pipeline <- function(
     path,
-    group_regex,
-    group_names,
+    group_regex = NULL,
+    group_names = NULL,
     analysis_title,
-    mod_file = NULL
+    mod_file = NULL,
+    inspect_samples = FALSE
 ) {
-  
   
   # ---------------- Libraries --------------------
   library(dplyr)
   library(ggplot2)
   library(tidyverse)
-
+  
+  # ---------------- Checks -----------------------
+  path <- normalizePath(path, mustWork = TRUE)
   
   # ---------------- Output directories ----------------
   plot_dir <- file.path(path, "plots")
@@ -33,24 +23,22 @@ run_geyer_pipeline <- function(
   
   plot_prefix <- gsub("[^A-Za-z0-9]+", "_", analysis_title)
   
-  
   message("Leyendo archivos...")
   
   # ---------------- QC ----------------
   summary <- read.delim(
-  file.path(path, "summary.txt"),
-  check.names = FALSE
-)
-  
+    file.path(path, "summary.txt"),
+    check.names = FALSE
+  )
   
   # ---------------- proteinGroups ----------------
   pg <- read.delim(
-  file.path(path, "proteinGroups.txt"),
-  check.names = FALSE
-)
+    file.path(path, "proteinGroups.txt"),
+    check.names = FALSE
+  )
   
   pg_clean <- pg %>%
-    dplyr::filter(
+    filter(
       Reverse != "+",
       `Potential contaminant` != "+",
       `Only identified by site` != "+"
@@ -71,15 +59,35 @@ run_geyer_pipeline <- function(
   }
   
   rownames(expr) <- pg_clean$`Protein IDs`
-  
   expr[expr == 0] <- NA
   
+  # ================= NUEVO: inspección de muestras =================
+  samples <- colnames(expr)
+  
+  if (inspect_samples) {
+    message("Muestras detectadas:")
+    print(samples)
+    message("Define group_regex y group_names y vuelve a ejecutar.")
+    return(invisible(samples))
+  }
+  
+  # ---------------- Group sanity checks ----------------
+  if (is.null(group_regex) || is.null(group_names)) {
+    stop("Debes proporcionar group_regex y group_names (o usar inspect_samples = TRUE).")
+  }
+  
+  if (length(group_regex) != length(group_names)) {
+    stop("group_regex y group_names deben tener la misma longitud.")
+  }
+  
+  # ---------------- Filtering ----------------
   keep <- rowSums(!is.na(expr)) >= 0.7 * ncol(expr)
   if (sum(keep) == 0) stop("No hay filas con suficientes datos para PCA.")
   
   expr_log <- log2(expr[keep, ])
-  expr_for_bias <- expr_log   # SIN centrar
-  expr_norm <- sweep(expr_log, 2, apply(expr_log, 2, median, na.rm = TRUE), FUN = "-")
+  expr_norm <- sweep(expr_log, 2,
+                     apply(expr_log, 2, median, na.rm = TRUE),
+                     FUN = "-")
   
   expr_noimp <- as.matrix(expr_norm)
   mode(expr_noimp) <- "numeric"
@@ -90,8 +98,11 @@ run_geyer_pipeline <- function(
   
   pca <- prcomp(t(expr_pca), scale. = FALSE)
   
-  sample_info <- data.frame(Sample = colnames(expr_pca), stringsAsFactors = FALSE)
-  sample_info$Group <- "Other"
+  sample_info <- data.frame(
+    Sample = colnames(expr_pca),
+    Group = "Other",
+    stringsAsFactors = FALSE
+  )
   
   for (i in seq_along(group_regex)) {
     sample_info$Group[
@@ -102,6 +113,12 @@ run_geyer_pipeline <- function(
   message("Grupos asignados:")
   print(table(sample_info$Group))
   
+  if (any(sample_info$Group == "Other")) {
+    warning("Algunas muestras no fueron asignadas a ningún grupo:")
+    print(sample_info$Sample[sample_info$Group == "Other"])
+  }
+  
+  # ---------------- PCA plot ----------------
   pca_df <- data.frame(
     Sample = rownames(pca$x),
     PC1 = pca$x[, 1],
@@ -123,14 +140,11 @@ run_geyer_pipeline <- function(
       y = paste0("PC2 (", round(100 * summary(pca)$importance[2, 2], 1), "%)")
     ) +
     scale_color_brewer(palette = "Set1")
-  
   print(p_pca)
-  
   ggsave(
-    filename = file.path(plot_dir, paste0(plot_prefix, "_PCA.png")),
-    plot = p_pca, width = 7, height = 6, dpi = 300
+    file.path(plot_dir, paste0(plot_prefix, "_PCA.png")),
+    p_pca, width = 7, height = 6, dpi = 300
   )
-  
   
   # ---------------- Oxidation (M) ----------------
   if (!is.null(mod_file)) {
@@ -139,7 +153,6 @@ run_geyer_pipeline <- function(
       file.path(path, mod_file),
       check.names = FALSE
     )
-
     
     intensity_cols <- grep("^Intensity ", colnames(mods), value = TRUE)
     if (length(intensity_cols) == 0)
@@ -164,36 +177,32 @@ run_geyer_pipeline <- function(
     ) %>% left_join(sample_info, by = "Sample")
     
     p_ox <- ggplot(ox_df, aes(Group, Oxidation_M, fill = Group)) +
-      geom_boxplot(outlier.shape = NA, alpha = 0.7, linewidth = 0.6)+
+      geom_boxplot(outlier.shape = NA, alpha = 0.7, linewidth = 0.6) +
       geom_jitter(width = 0.15, size = 2, alpha = 0.7) +
       theme_minimal(base_size = 13) +
-      theme(
-        legend.position = "none",
-        plot.title = element_text(face = "bold", hjust = 0.5)
-      ) +
       labs(
         title = paste("Oxidation (M) –", basename(mod_file)),
         y = "Sum of intensities"
       ) +
-      scale_fill_brewer(palette = "Set1")
-    
+      scale_fill_brewer(palette = "Set1") +
+      theme(legend.position = "none")
+
     print(p_ox)
-    ggsave(
-      filename = file.path(plot_dir, paste0(plot_prefix, "_Oxidation_M.png")),
-      plot = p_ox, width = 7, height = 6, dpi = 300
-    )
     
+    ggsave(
+      file.path(plot_dir, paste0(plot_prefix, "_Oxidation_M.png")),
+      p_ox, width = 7, height = 6, dpi = 300
+    )
   }
   
-  # ---------------- Missing values per sample ----------------
-  
+  # ---------------- Missing values (density) ----------------
   missing_df <- data.frame(
     Sample = colnames(expr),
     Missing_fraction = colMeans(is.na(expr))
   ) %>% left_join(sample_info, by = "Sample")
   
-  p_missing_density <- ggplot(missing_df,
-                              aes(Missing_fraction, color = Group, fill = Group)) +
+  p_missing <- ggplot(missing_df,
+                      aes(Missing_fraction, color = Group, fill = Group)) +
     geom_density(alpha = 0.3) +
     theme_minimal(base_size = 13) +
     labs(
@@ -203,17 +212,15 @@ run_geyer_pipeline <- function(
     ) +
     scale_color_brewer(palette = "Set1") +
     scale_fill_brewer(palette = "Set1")
-  
-  print(p_missing_density)
-  
+
+    print(p_missing)
   
   ggsave(
-    filename = file.path(plot_dir, paste0(plot_prefix, "_MissingValues.png")),
-    plot = p_missing_density, width = 7, height = 6, dpi = 300
+    file.path(plot_dir, paste0(plot_prefix, "_MissingValues.png")),
+    p_missing, width = 7, height = 6, dpi = 300
   )
   
-  # ---------------- Coefficient of Variation (CV) ----------------
-  
+  # ---------------- CV (ECDF) ----------------
   cv_list <- lapply(unique(sample_info$Group), function(g) {
     
     samples_g <- sample_info$Sample[sample_info$Group == g]
@@ -221,22 +228,17 @@ run_geyer_pipeline <- function(
     
     if (length(samples_g) < 2) return(NULL)
     
-    submat <- expr_log[, samples_g, drop = FALSE]
-    
-    cv <- apply(submat, 1, function(x) {
+    cv <- apply(expr_log[, samples_g, drop = FALSE], 1, function(x) {
       if (all(is.na(x))) return(NA)
       sd(x, na.rm = TRUE) / mean(x, na.rm = TRUE)
     })
     
-    data.frame(
-      Group = g,
-      CV = cv
-    )
+    data.frame(Group = g, CV = cv)
   })
   
   cv_df <- bind_rows(cv_list)
   
-  p_cv_ecdf <- ggplot(cv_df, aes(CV, color = Group)) +
+  p_cv <- ggplot(cv_df, aes(CV, color = Group)) +
     stat_ecdf(linewidth = 0.6) +
     coord_cartesian(xlim = c(0, quantile(cv_df$CV, 0.95, na.rm = TRUE))) +
     theme_minimal(base_size = 13) +
@@ -246,20 +248,20 @@ run_geyer_pipeline <- function(
       y = "Cumulative fraction"
     ) +
     scale_color_brewer(palette = "Set1")
+
+    print(p_cv)
   
-  
-  print(p_cv_ecdf)
   ggsave(
-    filename = file.path(plot_dir, paste0(plot_prefix, "_CV.png")),
-    plot = p_cv_ecdf, width = 7, height = 6, dpi = 300
+    file.path(plot_dir, paste0(plot_prefix, "_CV.png")),
+    p_cv, width = 7, height = 6, dpi = 300
   )
-  
 }
 
 # ===============================
 # Ejemplo de uso de run_geyer_pipeline
 # ===============================
-print('run_geyer_pipeline( path = "ruta/a/tu/dataset", group_regex = c("Grupo1", "Grupo2", ...), group_names = c("Grupo1", "Grupo2", ...), analysis_title = "Título del análisis", mod_file = "Oxidation (M)Sites.txt"')
+print('Obtener los nombres de los grupos:')
+print('run_geyer_pipeline(path = "ruta/a/tu/dataset", analysis_title = "QC check", inspect_samples = TRUE')
 
-
-
+print('Para llevar a cabo el análisis:')
+print('run_geyer_pipeline(path = "ruta/a/tu/dataset", group_regex = c("Grupo1", "Grupo2", ...), group_names = c("Grupo1", "Grupo2", ...), analysis_title = "Título del análisis", mod_file = "Oxidation (M)Sites.txt"')
