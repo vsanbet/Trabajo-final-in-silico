@@ -18,12 +18,10 @@ run_geyer_pipeline <- function(
     mod_file = NULL
 ) {
   
-  
-  # ---------------- Set working directory ----------------
+  # ---------------- Set working directory -------------
   setwd(path)
   
-  
-  # ---------------- Libraries --------------------
+  # ---------------- Libraries --------------------------
   library(dplyr)
   library(ggplot2)
   library(tidyverse)
@@ -186,27 +184,25 @@ run_geyer_pipeline <- function(
     Missing_fraction = colMeans(is.na(expr))
   ) %>% left_join(sample_info, by = "Sample")
   
-  p_missing <- ggplot(missing_df, aes(Group, Missing_fraction, fill = Group)) +
-    geom_boxplot(outlier.shape = NA, alpha = 0.7) +
-    geom_jitter(width = 0.15, size = 2, alpha = 0.7) +
+  p_missing_density <- ggplot(missing_df,
+                              aes(Missing_fraction, color = Group, fill = Group)) +
+    geom_density(alpha = 0.3) +
     theme_minimal(base_size = 13) +
-    theme(
-      legend.position = "none",
-      plot.title = element_text(face = "bold", hjust = 0.5)
-    ) +
     labs(
-      title = paste("Missing values per sample –", analysis_title),
-      y = "Fraction of missing proteins"
+      title = paste("Distribution of missing values –", analysis_title),
+      x = "Fraction of missing proteins",
+      y = "Density"
     ) +
+    scale_color_brewer(palette = "Set1") +
     scale_fill_brewer(palette = "Set1")
   
-  print(p_missing)
+  print(p_missing_density)
+  
   
   ggsave(
     filename = file.path(plot_dir, paste0(plot_prefix, "_MissingValues.png")),
-    plot = p_missing, width = 7, height = 6, dpi = 300
+    plot = p_missing_density, width = 7, height = 6, dpi = 300
   )
-  
   
   # ---------------- Coefficient of Variation (CV) ----------------
   
@@ -232,25 +228,22 @@ run_geyer_pipeline <- function(
   
   cv_df <- bind_rows(cv_list)
   
-  p_cv <- ggplot(cv_df, aes(Group, CV, fill = Group)) +
-    geom_boxplot(outlier.shape = NA, alpha = 0.7) +
-    coord_cartesian(ylim = c(0, quantile(cv_df$CV, 0.95, na.rm = TRUE))) +
+  p_cv_ecdf <- ggplot(cv_df, aes(CV, color = Group)) +
+    stat_ecdf(size = 1) +
+    coord_cartesian(xlim = c(0, quantile(cv_df$CV, 0.95, na.rm = TRUE))) +
     theme_minimal(base_size = 13) +
-    theme(
-      legend.position = "none",
-      plot.title = element_text(face = "bold", hjust = 0.5)
-    ) +
     labs(
-      title = paste("Intra-group coefficient of variation –", analysis_title),
-      y = "CV (sd / mean)"
+      title = paste("ECDF of CV –", analysis_title),
+      x = "CV (sd / mean)",
+      y = "Cumulative fraction"
     ) +
-    scale_fill_brewer(palette = "Set1")
+    scale_color_brewer(palette = "Set1")
   
-  print(p_cv)
   
+  print(p_cv_ecdf)
   ggsave(
     filename = file.path(plot_dir, paste0(plot_prefix, "_CV.png")),
-    plot = p_cv, width = 7, height = 6, dpi = 300
+    plot = p_cv_ecdf, width = 7, height = 6, dpi = 300
   )
   
 }
@@ -266,37 +259,3 @@ run_geyer_pipeline <- function(
 #      analysis_title = "Título del análisis",
 #      mod_file = "Oxidation (M)Sites.txt"
 # )
-
-# Funcionar
-run_geyer_pipeline(
-     path = "C:/Users/vsanb/OneDrive/Master_Bioinformática/segundo_año/estudios in silico/trabajo_final/txt/Platelet-richPlasma_20Ind_combined",
-     group_regex = c("Dilution", "Thrombocytes"),
-     group_names = c("Dilution", "Thrombocytes"),
-     analysis_title = "Platelet-rich Plasma analysis",
-     mod_file = "Oxidation (M)Sites.txt")
-
-run_geyer_pipeline(
-     path = "C:/Users/vsanb/OneDrive/Master_Bioinformática/segundo_año/estudios in silico/trabajo_final/txt/Plasma_20Ind_combined",
-     group_regex = c("^Dilution_Plasma", "^Plasma"),
-     group_names = c("Dilution", "Plasma"),
-     analysis_title = "Plasma analysis",
-     mod_file = "Oxidation (M)Sites.txt")
-
-run_geyer_pipeline(path = "C:/Users/vsanb/OneDrive/Master_Bioinformática/segundo_año/estudios in silico/trabajo_final/txt/Library_20Ind_combined", group_regex = c(
-     "Erythrocytes",
-     "Plasma",
-     "Thrombocytes", "WholeBlood", "Thrombocytes-rich"), group_names = c("Erythrocytes", "Plasma", "Thrombocytes", "WholeBlood", "Thrombocytes-rich"), analysis_title = "Library analysis", mod_file = "Oxidation (M)Sites.txt")
-
-run_geyer_pipeline(path = "C:/Users/vsanb/OneDrive/Master_Bioinformática/segundo_año/estudios in silico/trabajo_final/txt/Erythrocytes_20Ind_combined", group_regex = c(
-     "_A",
-     "_B",
-     "_F"), group_names = c("Group Dilution A", "Group Dilution B", "Group erythrocytes F"), analysis_title = "Erythrocytes analysis", mod_file = "Oxidation (M)Sites.txt")
-
-run_geyer_pipeline(path = "C:/Users/vsanb/OneDrive/Master_Bioinformática/segundo_año/estudios in silico/trabajo_final/txt/Blood_20Ind_combined", group_regex = c("_B","_C","_D","_F"), group_names = c("Group Dilution B", "Group Dilution C", "Group Dilution D", "Group whole blood F"), analysis_title = "Whole Blood analysis", mod_file = "Oxidation (M)Sites.txt")
-
-run_geyer_pipeline(path = "C:/Users/vsanb/OneDrive/Master_Bioinformática/segundo_año/estudios in silico/trabajo_final/txt/Platelets_10Ind_combined/", group_regex = c("Thrombozytes","Thrombocytes"), group_names = c("Dilution", "Thrombocytes", "Group Dilution"), analysis_title = "Platelets analysis", mod_file = "Oxidation (M)Sites.txt")
-
-run_geyer_pipeline(path = "C:/Users/vsanb/OneDrive/Master_Bioinformática/segundo_año/estudios in silico/trabajo_final/txt/SerumVsPlasma_txt/", group_regex = c("Library", "Serum", "Plasma"), group_names = c("Library", "Serum", "Plasma"), analysis_title = "Serum vs Plasma analysis", mod_file = "modificationSpecificPeptides.txt")
-
-run_geyer_pipeline(path = "C:/Users/vsanb/OneDrive/Master_Bioinformática/segundo_año/estudios in silico/trabajo_final/txt/Standing_txt", group_regex = c("^Direct", "^FalconDirect", "Library", "^Standing", "\\d+g$"), group_names = c("Direct", "Falcon Direct", "Library", "Standing", "g"), analysis_title = "Standing analysis", mod_file = "modificationSpecificPeptides.txt")
-
