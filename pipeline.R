@@ -164,7 +164,7 @@ run_geyer_pipeline <- function(
     ) %>% left_join(sample_info, by = "Sample")
     
     p_ox <- ggplot(ox_df, aes(Group, Oxidation_M, fill = Group)) +
-      geom_boxplot(outlier.shape = NA, alpha = 0.7) +
+      geom_boxplot(outlier.shape = NA, alpha = 0.7, linewidth = 0.6)+
       geom_jitter(width = 0.15, size = 2, alpha = 0.7) +
       theme_minimal(base_size = 13) +
       theme(
@@ -237,7 +237,7 @@ run_geyer_pipeline <- function(
   cv_df <- bind_rows(cv_list)
   
   p_cv_ecdf <- ggplot(cv_df, aes(CV, color = Group)) +
-    stat_ecdf(size = 1) +
+    stat_ecdf(linewidth = 0.6) +
     coord_cartesian(xlim = c(0, quantile(cv_df$CV, 0.95, na.rm = TRUE))) +
     theme_minimal(base_size = 13) +
     labs(
@@ -259,14 +259,7 @@ run_geyer_pipeline <- function(
 # ===============================
 # Ejemplo de uso de run_geyer_pipeline
 # ===============================
-print(
-  'run_geyer_pipeline( 
-      path = "ruta/a/tu/dataset", 
-      group_regex = c("Grupo1", "Grupo2", ...), 
-      group_names = c("Grupo1", "Grupo2", ...), 
-      analysis_title = "Título del análisis", 
-      mod_file = "Oxidation (M)Sites.txt"'
-     )
+print('run_geyer_pipeline( path = "ruta/a/tu/dataset", group_regex = c("Grupo1", "Grupo2", ...), group_names = c("Grupo1", "Grupo2", ...), analysis_title = "Título del análisis", mod_file = "Oxidation (M)Sites.txt"')
 
 
 
