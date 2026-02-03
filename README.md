@@ -37,6 +37,7 @@ El pipeline implementa los siguientes pasos:
    - Análisis de Componentes Principales (PCA)
    - Evaluación de la proporción de valores ausentes por muestra
    - Cálculo del coeficiente de variación (CV) intra-grupo
+   - **Detección automática de grupos de muestras** a partir de los nombres de columna si `inspect_samples = TRUE`
 
 4. **Control de degradación / estrés oxidativo**
    - Cuantificación de la oxidación de metionina a partir de péptidos modificados
@@ -62,5 +63,3 @@ Todos los resultados se guardan automáticamente en una carpeta `plots/` dentro 
 
 ```r
 source("run_geyer_pipeline.R")
-
-```
