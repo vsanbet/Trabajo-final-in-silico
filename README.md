@@ -63,5 +63,4 @@ Todos los resultados se guardan automáticamente en una carpeta `plots/` dentro 
 ```r
 source("run_geyer_pipeline.R")
 
-```r
-source("run_geyer_pipeline.R")
+```
