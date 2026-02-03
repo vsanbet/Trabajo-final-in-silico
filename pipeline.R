@@ -18,9 +18,6 @@ run_geyer_pipeline <- function(
     mod_file = NULL
 ) {
   
-  # ---------------- Set working directory -------------
-  setwd(path)
-  
   # ---------------- Libraries --------------------------
   library(dplyr)
   library(ggplot2)
@@ -39,11 +36,11 @@ run_geyer_pipeline <- function(
   message("Leyendo archivos...")
   
   # ---------------- QC ----------------
-  summary <- read.delim("summary.txt", check.names = FALSE)
+  summary <- read.delim(file.path(path, "summary.txt", check.names = FALSE))
   
   
   # ---------------- proteinGroups ----------------
-  pg <- read.delim("proteinGroups.txt", check.names = FALSE)
+  pg <- read.delim(file.path(path, "proteinGroups.txt", check.names = FALSE))
   
   pg_clean <- pg %>%
     dplyr::filter(
@@ -131,7 +128,7 @@ run_geyer_pipeline <- function(
   # ---------------- Oxidation (M) ----------------
   if (!is.null(mod_file)) {
     
-    mods <- read.delim(mod_file, check.names = FALSE)
+    mods <- read.delim(file.path(path, mod_file, check.names = FALSE))
     
     intensity_cols <- grep("^Intensity ", colnames(mods), value = TRUE)
     if (length(intensity_cols) == 0)
@@ -259,3 +256,4 @@ run_geyer_pipeline <- function(
 #      analysis_title = "Título del análisis",
 #      mod_file = "Oxidation (M)Sites.txt"
 # )
+
