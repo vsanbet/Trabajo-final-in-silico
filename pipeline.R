@@ -18,7 +18,8 @@ run_geyer_pipeline <- function(
     mod_file = NULL
 ) {
   
-  # ---------------- Libraries --------------------------
+  
+  # ---------------- Libraries --------------------
   library(dplyr)
   library(ggplot2)
   library(tidyverse)
@@ -40,7 +41,8 @@ run_geyer_pipeline <- function(
   file.path(path, "summary.txt"),
   check.names = FALSE
 )
-
+  
+  
   # ---------------- proteinGroups ----------------
   pg <- read.delim(
   file.path(path, "proteinGroups.txt"),
@@ -134,9 +136,10 @@ run_geyer_pipeline <- function(
   if (!is.null(mod_file)) {
     
     mods <- read.delim(
-  file.path(path, mod_file),
-  check.names = FALSE
-)
+      file.path(path, mod_file),
+      check.names = FALSE
+    )
+
     
     intensity_cols <- grep("^Intensity ", colnames(mods), value = TRUE)
     if (length(intensity_cols) == 0)
@@ -256,13 +259,14 @@ run_geyer_pipeline <- function(
 # ===============================
 # Ejemplo de uso de run_geyer_pipeline
 # ===============================
+print(
+  'run_geyer_pipeline( 
+      path = "ruta/a/tu/dataset", 
+      group_regex = c("Grupo1", "Grupo2", ...), 
+      group_names = c("Grupo1", "Grupo2", ...), 
+      analysis_title = "Título del análisis", 
+      mod_file = "Oxidation (M)Sites.txt"'
+     )
 
-# run_geyer_pipeline(
-#      path = "ruta/a/tu/dataset",
-#      group_regex = c("Grupo1", "Grupo2", ...),
-#      group_names = c("Grupo1", "Grupo2", ...),
-#      analysis_title = "Título del análisis",
-#      mod_file = "Oxidation (M)Sites.txt"
-# )
 
 
