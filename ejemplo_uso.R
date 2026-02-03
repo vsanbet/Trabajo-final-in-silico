@@ -5,7 +5,7 @@ source("run_geyer_pipeline.R")
 run_geyer_pipeline(
      path = "ruta/a/tu/dataset", 
      analysis_title = "QC check", 
-     inspect_samples = TRUE'
+     inspect_samples = TRUE
 )
 
 # Análisis de ficheros
